@@ -1,2 +1,2 @@
 # typ
-typ is a typing software.
+typ是一款打字软件，用汇编编写。
