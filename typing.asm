@@ -19,10 +19,6 @@ data segment
     db 96,96,48,48,96,96,96,96,96,96,96,48,48,96,96,96,96,96,48,48,96,96,96,96
     db 96,48,48,48,48,96,96,96,96,96,96,48,48,96,96,96,96,96,48,48,96,96,96,96
     db 96,48,48,48,48,96,96,96,96,96,96,48,48,96,96,96,96,96,48,96,96,96,96,96
-    ; 记录时长
-    begin_time db 0,0,0
-    end_time db 0,0,0
-    gap db 0,0,0
     ; 主界面信息
     help1 db "Typ is a typing software.$"
     help2 db "Arrow key select options.$"
@@ -33,8 +29,6 @@ data segment
     option2 db "   Exit   "
 
     declaim db "Ownership of typ is owned by zls.$"
-    ; 用于各子过程返回值
-    rtv db 0
     ; Esc界面
     esc_query db "Really want to exit?$"
     exit_str db "  Exit   "
@@ -45,10 +39,17 @@ data segment
     time_str db "Time: $"
     ; 练习文章,刚好100个字符。
     essay db "I was used to do things by my own, because I did not like to cooperate with other person. So stupid."
+    page_str db "PAGE$"
+    leave_prompt db "ESC to quit!$"
+    ; 记录时长
+    begin_time db 0,0,0
+    end_time db 0,0,0
+    gap db 0,0,0
+    ; 用于各子过程返回值
+    rtv db 0
     ; 错误次数
     missing db 0
     ; 页面信息
-    page_str db "PAGE$"
     total_page db 0     ; 通过draw_text的最终bh给出
     current_page db 0   ; 通过handler函数的bh给出
 data ends
@@ -298,29 +299,18 @@ clear:
 start_interface:
     save_context
     ; 绘制背景
-    mov ah,6         ; BIOS6号功能，al为0时清屏
-    mov al,0
-    mov bh,01110000b ; 通过bh设置灰色背景， 6 5 4三位设置R G B背景色
-    mov cx,0         ; ch,cl左上角坐标，dh，dl右下角坐标。这个范围内会灰色
-    mov dx,184fh     ; 80x25 column x row
-    int 10h
-
-    mov ah,6
-    mov al,0
-    mov bh,01100000b
-    mov cx,0102h
-    mov dx,174dh     ; 这样，就能设置灰色边框+红绿色背景。哈哈
-    int 10h
+    draw_canvas 70h,0,184fh
+    draw_canvas 60h,0102h,174dh
     ; 软件名字子程序，不能用宏，否则代码在编译后很大
     call near ptr draw_name        ; 具体参见line 71
     ; 软件信息宏
     draw_info                      ; 绘制软件信息，操纵信息,具体参见line 108
     ; 绘制开始和退出按钮, 具体参见line 188
     ; r1,c1,r2,c2,len,page,selected,unselected
-    draw_button 19,26,21,44,10,current_page,28h,70h,option1,option2
+    draw_button 19,26,21,44,10,current_page,2ah,70h,option1,option2
     ; 循环检测按键，<- ->控制选中选项，Enter确定选择。参见line 219
     ; row,len,page,selected,unselected,c1,c2
-    control_option 20,10,current_page,28h,70h,26,44,option1,option2
+    control_option 20,10,current_page,2ah,70h,26,44,option1,option2
     restore_context
     retf
 
@@ -406,12 +396,25 @@ draw_text:
         restore_context
         retf
 
+handler_prompt macro
+    save_context
+    mov ah,2                    ; set pos
+    mov bh,current_page
+    mov dx,0
+    int 10h
+    draw_canvas 8fh,0,000bh     ; set attr
+    lea dx,leave_prompt         ; print
+    mov ah,9
+    int 21h
+    restore_context
+endm
 handler:
     save_context
     ; 初始化列表
     mov bh,0
     mov si,0
     h_lp:
+        handler_prompt
         mov dx,0224h                ;首行，输入行
         mov ah,5
         mov al,bh
