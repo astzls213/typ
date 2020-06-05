@@ -1,10 +1,9 @@
 ; 本程序为汇编语言课的课程设计
 ; 程序为一打字软件
 ; 设计思想：
-; 开始程序->绘制开始界面
-;
-;
-;
+; 开始程序->绘制开始界面->typing->perfomance
+;                    ->exit  ->exit
+
 ; 分为:数据段data/栈段stack/主程序段main/子程序段function
 ; 作者：暨南大学--甄洛生  不得随意转载源代码，转载说明出处！
 
@@ -75,6 +74,8 @@ entry:
     call far ptr clear
     ; 绘制文本
     call far ptr draw_text
+    ; 错误率清零
+    mov byte ptr missing,0
     ; 记录进入时间
     lea dx,begin_time
     push dx
@@ -414,13 +415,13 @@ handler:
     mov bh,0
     mov si,0
     h_lp:
-        handler_prompt
         mov dx,0224h                ;首行，输入行
         mov ah,5
         mov al,bh
         int 10h                     ; 显示活动页，bh决定
         mov current_page,bh         ; 存当前页码
         call near ptr draw_border   ; 绘制边界
+        handler_prompt
         h_lp1:
             push dx
             mov cx,10
@@ -573,7 +574,7 @@ ending_interface:              ; 结束界面
     lea dx,time_str         ; 显示标签
     mov ah,9
     int 21h
-    int 3
+
     compute_time_gap        ; 计算用时
     print_bin gap[0]
     mov dl,'m'
